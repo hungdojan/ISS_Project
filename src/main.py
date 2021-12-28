@@ -7,17 +7,27 @@ date:   07.01.2022
 author: Hung Do
 """
 
+"""
+Hlavni cast zdrojoveho kodu byla presunuta do python noteboooku
+Tento skript nemusi byt up-to-date
+"""
+
 import os
 import numpy as np
 from scipy.io import wavfile
 from scipy.linalg import dft
-from scipy.signal import spectrogram, lfilter, freqz, tf2zpk, find_peaks, convolve, buttord, butter
+from scipy.signal import spectrogram, lfilter, freqz, tf2zpk, find_peaks,\
+                         buttord, butter
 import matplotlib.pyplot as plt
 
 lof_frames = []
 spect = []
 cos_freq = []
 cos_indices = []
+
+# vyber typu filteru
+filters = ['z', 'spec', 'bandstop']
+iof_filt = 0
 
 
 def get_audio_path(filename: str) -> str:
@@ -93,7 +103,7 @@ def task2():
 def task3():
     """Treti ukol"""
     global spect
-    index_start = 1
+    index_start = 20
     frame = np.array(lof_frames[index_start])
     N = len(frame)
     # vypocet dft pomoci iterace
@@ -119,6 +129,9 @@ def task3():
     ax.set_title('Segment signalu')
     ax.grid(alpha=0.5, linestyle='--')
     plt.tight_layout()
+
+    # priprava pro task6
+    spect = abs(m @ np.array(lof_frames[0]))
 
 
 def task4():
@@ -160,6 +173,10 @@ def task6():
     # vytvoreni souctu 4 kosin
     output_cos = sum([volume * np.cos(2 * np.pi * f * nof_samples)
                       for f in cos_freq])
+
+    # normovani a prevod na 16bit
+    output_cos = output_cos / max(abs(output_cos))
+    output_cos = np.iinfo(np.int16).max * output_cos
 
     # TODO: vygenerovat spektrogram
     f, t, sgr = spectrogram(output_cos, fs, nperseg=1024, noverlap=512)
@@ -253,18 +270,6 @@ def task7(filter_type: str):
 
 def task8(filter_type: str, b_a: any):
     """Osmy ukol"""
-    # # prevod na komplexni rovinu
-    # vals = np.roots(filt)
-
-    # # tvorba jednotkove kruznice
-    # _, ax = plt.subplots()
-    # ang = np.linspace(0, 2 * np.pi, 100)
-    # ax.plot(np.sin(ang), np.cos(ang))
-    # ax.set_aspect('equal')
-    # ax.scatter(np.real(vals), np.imag(vals), marker='x')
-    # ax.grid(alpha=0.5, linestyle='--')
-
-    # if filter_type == 'z':
     if filter_type != 'bandstop':
         b, a = b_a
         z, p, _ = tf2zpk(b, a)
@@ -358,12 +363,14 @@ def task9(filter_type: str, b_a: any):
             y, x = get_iof_axis(i)
             ax[y, x].plot(w / 2 / np.pi * fs, np.abs(H))
             ax[y, x].set_xlabel('Frekvence [Hz]')
-            ax[y, x].set_title('Modul frekvenční charakteristiky $|H_%d(e^{j\omega})|$' %(i+1))
+            ax[y, x].set_title('Modul frekvenční charakteristiky' \
+                               '$|H_%d(e^{j\omega})|$' % (i+1))
             ax[y, x].grid(alpha=0.5, linestyle='--')
 
             ax[y, x+1].plot(w / 2 / np.pi * fs, np.angle(H))
             ax[y, x+1].set_xlabel('Frekvence [Hz]')
-            ax[y, x+1].set_title('Argument frekvenční charakteristiky $\mathrm{arg}\ H_%d(e^{j\omega})$' %(i+1))
+            ax[y, x+1].set_title('Argument frekvenční charakteristiky' \
+                                 '$\mathrm{arg}\ H_%d(e^{j\omega})$' % (i+1))
             ax[y, x+1].grid(alpha=0.5, linestyle='--')
             plt.tight_layout()
 
@@ -398,15 +405,19 @@ def task10(filter_type: str, b_a: any):
     cbar = plt.colorbar()
     cbar.set_label('Spektralní hustota výkonu [dB]', rotation=270, labelpad=15)
 
+    # normalizace a prevod na 16bit
+    filtered = filtered / max(abs(filtered))
+    filtered = np.iinfo(np.int16).max * filtered
+
     plt.tight_layout()
-    wavfile.write(get_audio_path(f'clean_{filter_type}.wav'), fs, filtered.astype(np.int16))
+    # generovani zvuku
+    wavfile.write(get_audio_path(f'clean_{filter_type}.wav'), fs,
+                  filtered.astype(np.int16))
 
 
 # absoluti cesta ke zdroji zvuku
 # spojeni _parent_dir_ a audio/xlogin00.wav
 PATH_TO_AUDIO = get_audio_path('xdohun00.wav')
-filters = ['z', 'spec', 'bandstop']
-iof_filt = 0
 fs, data = wavfile.read(PATH_TO_AUDIO)
 duration = data.size / fs
 task1()
